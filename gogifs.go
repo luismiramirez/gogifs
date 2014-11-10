@@ -1,71 +1,18 @@
 package main
 
 import (
-  "database/sql"
-  _ "github.com/mattn/go-sqlite3"
   "os"
+  "math/rand"
+  "time"
   "github.com/go-martini/martini"
   "github.com/martini-contrib/render"
+  "labix.org/v2/mgo"
   "net/http"
-  "fmt"
   )
 
 type Reaction struct {
-  Id int
   Title string
   Image string
-}
-
-func main() {
-  db := NewDB()
-  defer db.Close()
-
-  m := martini.Classic()
-
-  m.Use(Auth)
-  m.Use(render.Renderer())
-
-  m.Post("/reactions", func(res http.ResponseWriter, rq *http.Request, r render.Render) {
-    title, image := rq.FormValue("title"), rq.FormValue("image")
-
-    if title == "" || image == "" {
-      http.Error(res, "Fill title and image", 422)
-      return
-    }
-
-    _, err := db.Exec(
-      "INSERT INTO reactions (title, image) VALUES(?, ?)",
-      title,
-      image,
-    )
-
-    if err != nil {
-      panic(err.Error())
-    }
-
-    r.JSON(201, nil)
-  })
-
-  m.Get("/randomreaction", func(r render.Render) {
-    var reaction Reaction
-    rows, err := db.Query("SELECT * FROM reactions ORDER BY RANDOM() LIMIT 1")
-
-    if err != nil {
-      panic(err.Error())
-    }
-
-    for rows.Next() {
-      err := rows.Scan(&reaction.Id, &reaction.Title, &reaction.Image)
-
-      if err != nil {
-        panic(err.Error())
-      }
-    }
-    fmt.Println(reaction)
-    r.JSON(200, reaction)
-  })
-
-  m.Run()
 }
 
 func Auth(res http.ResponseWriter, req *http.Request) {
@@ -74,20 +21,73 @@ func Auth(res http.ResponseWriter, req *http.Request) {
   }
 }
 
-func NewDB() *sql.DB {
-  db, err := sql.Open("sqlite3", "gogifs.sqlite")
+func DB() martini.Handler {
+  dburl := os.Getenv("MONGO_URL")
 
-  if err != nil {
+  if dburl == "" {
+    dburl = "mongodb://localhost"
+  }
+
+  session, err := mgo.Dial(dburl)
+
+  if err!= nil {
     panic(err)
   }
 
-  _, err = db.Exec(
-    "create table if not exists reactions(id integer primary key autoincrement, title text, image text)",
-  )
+  return func(c martini.Context) {
+    s := session.Clone()
+    c.Map(s.DB("gogifs"))
+    defer s.Close()
+    c.Next()
+  }
+}
 
-  if err != nil {
-    panic(err)
+func RandomNumber(max int) int {
+  rand.Seed(time.Now().Unix())
+
+  if max == 1 {
+    return 0
   }
 
-  return db
+  return rand.Intn(max)
+}
+
+func main() {
+  m := martini.Classic()
+
+  m.Use(Auth)
+  m.Use(render.Renderer())
+  m.Use(DB())
+
+  m.Post("/reactions", func(res http.ResponseWriter, rq *http.Request, r render.Render, db *mgo.Database) {
+    title, image := rq.FormValue("title"), rq.FormValue("image")
+
+    if title == "" || image == "" {
+      http.Error(res, "Fill title and image", 422)
+      return
+    }
+
+    reaction := Reaction{title, image}
+
+    db.C("reactions").Insert(reaction)
+
+    r.JSON(201, "Created")
+  })
+
+  m.Get("/randomreaction", func(r render.Render, db *mgo.Database) {
+    var reaction Reaction
+
+    total, err := db.C("reactions").Count()
+    if err != nil{
+      panic(err)
+    }
+
+    skip := RandomNumber(total)
+
+    db.C("reactions").Find(nil).Limit(-1).Skip(skip).One(&reaction)
+
+    r.JSON(200, reaction)
+  })
+
+  m.Run()
 }
