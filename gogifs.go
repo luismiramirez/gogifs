@@ -24,10 +24,6 @@ func Auth(res http.ResponseWriter, req *http.Request) {
 func DB() martini.Handler {
   dburl := os.Getenv("MONGOLAB_URI")
 
-  if dburl == "" {
-    dburl = "mongodb://localhost"
-  }
-
   session, err := mgo.Dial(dburl)
 
   if err!= nil {
