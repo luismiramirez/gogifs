@@ -79,7 +79,7 @@ func main() {
 
     total, err := db.C("reactions").Count()
     if err != nil{
-      panic(err)
+      panic(err.Error())
     }
 
     skip := RandomNumber(total)
