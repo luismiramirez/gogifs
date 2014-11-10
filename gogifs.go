@@ -32,7 +32,7 @@ func DB() martini.Handler {
 
   return func(c martini.Context) {
     s := session.Clone()
-    c.Map(s.DB("gogifs"))
+    c.Map(s.DB(os.Getenv("MONGOLAB_DB")))
     defer s.Close()
     c.Next()
   }
