@@ -22,7 +22,7 @@ func Auth(res http.ResponseWriter, req *http.Request) {
 }
 
 func DB() martini.Handler {
-  dburl := os.Getenv("MONGO_URL")
+  dburl := os.Getenv("MONGOLAB_URI")
 
   if dburl == "" {
     dburl = "mongodb://localhost"
