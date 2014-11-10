@@ -25,11 +25,18 @@ func main() {
   m.Use(Auth)
   m.Use(render.Renderer())
 
-  m.Post("/reactions", func(rq *http.Request, r render.Render) {
+  m.Post("/reactions", func(res http.ResponseWriter, rq *http.Request, r render.Render) {
+    title, image := rq.FormValue("title"), rq.FormValue("image")
+
+    if title == "" || image == "" {
+      http.Error(res, "Fill title and image", 422)
+      return
+    }
+
     _, err := db.Exec(
       "INSERT INTO reactions (title, image) VALUES(?, ?)",
-      rq.FormValue("title"),
-      rq.FormValue("image"),
+      title,
+      image,
     )
 
     if err != nil {
