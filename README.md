@@ -3,7 +3,7 @@ gogifs
 
 ## Small Go webapp with Martini
 
-Easy as a pie, two endpoints.
+Easy as a pie, three endpoints.
 
 ### To upload reactions
 
@@ -17,6 +17,13 @@ Params: title, image
 
 ```
 GET /randomreaction
+```
+
+### To find a reaction from name
+
+```
+GET /reactions
+  q = search
 ```
 
 Always using the header ```API-KEY``` that has to be set via environment variable in the host

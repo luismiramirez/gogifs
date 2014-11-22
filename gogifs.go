@@ -7,6 +7,7 @@ import (
   "github.com/go-martini/martini"
   "github.com/martini-contrib/render"
   "labix.org/v2/mgo"
+  "labix.org/v2/mgo/bson"
   "net/http"
   )
 
@@ -68,6 +69,15 @@ func main() {
     db.C("reactions").Insert(reaction)
 
     r.JSON(201, "Created")
+  })
+
+  m.Get("/reactions", func(r render.Render, rq *http.Request, db *mgo.Database) {
+    query := rq.FormValue("q")
+    var reaction Reaction
+
+    db.C("reactions").Find(bson.M{"title": query}).One(&reaction)
+
+    r.JSON(200, reaction)
   })
 
   m.Get("/randomreaction", func(r render.Render, db *mgo.Database) {
